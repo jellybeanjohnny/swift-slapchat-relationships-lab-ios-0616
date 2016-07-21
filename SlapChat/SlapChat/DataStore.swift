@@ -2,7 +2,7 @@
 //  DataStore.swift
 //  SlapChat
 //
-//  Created by Flatiron School on 7/18/16.
+//  Created by susan lovaglio on 7/16/16.
 //  Copyright © 2016 Flatiron School. All rights reserved.
 //
 
@@ -11,10 +11,11 @@ import CoreData
 
 class DataStore {
     
-    var messages:[Message] = []
     
     static let sharedDataStore = DataStore()
     
+    var messages: [Message] = []
+    var recipients: [Recipient] = []
     
     // MARK: - Core Data Saving support
     
@@ -32,50 +33,28 @@ class DataStore {
         }
     }
     
-    func fetchData ()
-    {
+    func fetchData () {
+        let fetchRequest = NSFetchRequest(entityName: Message.entityName)
         
-        var error:NSError? = nil
-        
-        let messagesRequest = NSFetchRequest(entityName: "Message")
-        
-        let createdAtSorter = NSSortDescriptor(key: "createdAt", ascending:true)
-        
-        messagesRequest.sortDescriptors = [createdAtSorter]
-        
-        do{
-            messages = try managedObjectContext.executeFetchRequest(messagesRequest) as! [Message]
-        }catch let nserror1 as NSError{
-            error = nserror1
-            messages = []
+        do {
+            self.messages = try self.managedObjectContext.executeFetchRequest(fetchRequest) as! [Message]
         }
-        
-        if messages.count == 0 {
-            generateTestData()
+        catch  {
+            print("Error fetching messages: \(error)")
         }
-        
-        ////         perform a fetch request to fill an array property on your datastore
     }
     
-    func generateTestData() {
+    
+    func fetchRecipients() -> [Recipient] {
+        let fetchRequest = NSFetchRequest(entityName: Recipient.entityName)
         
-        let messageOne: Message = NSEntityDescription.insertNewObjectForEntityForName("Message", inManagedObjectContext: managedObjectContext) as! Message
-        
-        messageOne.content = "Message 1"
-        messageOne.createdAt = NSDate()
-        
-        let messageTwo: Message = NSEntityDescription.insertNewObjectForEntityForName("Message", inManagedObjectContext: managedObjectContext) as! Message
-        
-        messageTwo.content = "Message 2"
-        messageTwo.createdAt = NSDate()
-        
-        let messageThree: Message = NSEntityDescription.insertNewObjectForEntityForName("Message", inManagedObjectContext: managedObjectContext) as! Message
-        
-        messageThree.content = "Message 3"
-        messageThree.createdAt = NSDate()
-        
-        saveContext()
-        fetchData()
+        do {
+            recipients = try managedObjectContext.executeFetchRequest(fetchRequest) as! [Recipient]
+        }
+        catch {
+            print("Error fetching recipients: \(error)")
+        }
+        return recipients
     }
     
     // MARK: - Core Data stack
@@ -100,7 +79,7 @@ class DataStore {
         // The persistent store coordinator for the application. This implementation creates and returns a coordinator, having added the store for the application to it. This property is optional since there are legitimate error conditions that could cause the creation of the store to fail.
         // Create the coordinator and store
         let coordinator = NSPersistentStoreCoordinator(managedObjectModel: self.managedObjectModel)
-        let url = self.applicationDocumentsDirectory.URLByAppendingPathComponent("SingleViewCoreData.sqlite")
+        let url = self.applicationDocumentsDirectory.URLByAppendingPathComponent("SingleViewCoreData.sqlite") // change this?
         var failureReason = "There was an error creating or loading the application's saved data."
         do {
             try coordinator.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: url, options: nil)
@@ -129,4 +108,60 @@ class DataStore {
         let urls = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)
         return urls[urls.count-1]
     }()
+    
+    func generateTestData() {
+        
+        // Add Bob
+        let recipientBob = NSEntityDescription.insertNewObjectForEntityForName(Recipient.entityName, inManagedObjectContext:managedObjectContext) as! Recipient
+        recipientBob.name = "Bob"
+        recipientBob.email = "bob@gmail.com"
+        recipientBob.phoneNumber  = "1234567"
+        recipientBob.twitterHandle = "@Bob"
+        
+        // give bob two messages
+        let messageOne = NSEntityDescription.insertNewObjectForEntityForName(Message.entityName, inManagedObjectContext: managedObjectContext) as! Message
+        messageOne.content = "I am Bob"
+        messageOne.createdAt = NSDate()
+        
+        let messageTwo = NSEntityDescription.insertNewObjectForEntityForName(Message.entityName, inManagedObjectContext: managedObjectContext) as! Message
+        messageOne.content = "It is really hot"
+        messageTwo.createdAt = NSDate()
+        
+        recipientBob.messages?.insert(messageOne)
+        recipientBob.messages?.insert(messageTwo)
+        
+        // Add Dog
+        let recipientDog = NSEntityDescription.insertNewObjectForEntityForName(Recipient.entityName, inManagedObjectContext: managedObjectContext) as! Recipient
+        recipientDog.name = "Dog"
+        recipientDog.email = "dog@gmail.com"
+        recipientDog.phoneNumber = "1234567"
+        recipientDog.twitterHandle = "@Dog"
+        
+        // give dog two messages
+        let dogMessageOne = NSEntityDescription.insertNewObjectForEntityForName(Message.entityName, inManagedObjectContext: managedObjectContext) as! Message
+        dogMessageOne.content = "I am Dog"
+        dogMessageOne.createdAt = NSDate()
+        
+        let dogMessageTwo = NSEntityDescription.insertNewObjectForEntityForName(Message.entityName, inManagedObjectContext: managedObjectContext) as! Message
+        dogMessageTwo.content = "Bark bark. Damn it's hot. Bark"
+        dogMessageTwo.createdAt = NSDate()
+        
+        recipientDog.messages?.insert(dogMessageOne)
+        recipientDog.messages?.insert(dogMessageTwo)
+        
+        saveContext()
+        fetchRecipients()
+    }
+    
+    func sortedFetch() {
+        let messageFetch = NSFetchRequest(entityName: Message.entityName)
+        let createdAtSort = NSSortDescriptor(key: "createdAt", ascending: false)
+        messageFetch.sortDescriptors = [createdAtSort]
+        do {
+            self.messages = try self.managedObjectContext.executeFetchRequest(messageFetch) as! [Message]
+        }
+        catch  {
+            print("Error fetching messages: \(error)")
+        }
+    }
 }
